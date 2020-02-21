@@ -72,13 +72,6 @@ isRing = do
   quickCheck $ ringIsLeftDistributive @r
   quickCheck $ ringIsRightDistributive @r
 
--- class Ring r => Poly p r | p -> r where
---   coeff :: p -> Int -> r
---   degree :: p -> Int
-
-data Poly a = Poly [a]
-  deriving Show
-
 instance Monoid Int where
   add = (+)
   addId = 0
@@ -90,7 +83,87 @@ instance Ring Int where
   mul = (*)
   mulId = 1
 
+-- class Ring r => Poly p r | p -> r where
+--   coeff :: p -> Int -> r
+--   degree :: p -> Int
+
+data Poly a = Poly [a]
+  deriving (Show)
+
+instance Arbitrary a => Arbitrary (Poly a) where
+  arbitrary = do
+    list <- arbitrary
+    return (Poly list)
+
+instance (Eq a, Monoid a) => Eq (Poly a) where
+  p1 == p2 = (dropWhile (==addId) (getList p1)) == (dropWhile (==addId) (getList p2))
+
+degree :: Poly a -> Int
+degree (Poly list) = (length list) - 1
+
+getList :: Poly a -> [a]
+getList (Poly ls) = ls
+
+stripZeros :: (Ring a, Eq a) => Poly a -> Poly a
+stripZeros p = Poly (dropWhile (==addId) (getList p))
+
+examplePoly1 :: Poly Int  = Poly [3, 2, -1, 7]
+examplePoly2 :: Poly Int  = Poly [2, 2, 1, 3, 1, -3]
+-- 3x^2 + 3  -    [3, 0, 3]
+-- 3x^2 -3x + 2 - [3, -3, 2]
+-- [1, 2, 4, 5, 6]
+-- [0, 0 ,2, 3, 5]
+-- [(4, 1), (0, -1)]
+-- [(2, 2), (1, -2), (0, 4)]
+
+indexed :: [a] -> [(Int, a)]
+indexed a = indexed' (length a - 1) a
+  where indexed' n (x:xs) = (n, x):(indexed' (n-1) xs)
+        indexed' n []     = []
+
+-- assume fist list is sorted by Int
+unindexed :: Ring a => [(Int, a)] -> [a]
+unindexed []           = []
+unindexed ((ix, x):[]) = [x]
+unindexed ((ix, x):(iy, y):xs) = x:(padWithId (ix - iy) (unindexed ((iy,y):xs)))
+  where padWithId 0 ls = ls
+        padWithId 1 ls = ls
+        padWithId n ls = padWithId (n-1) (addId:ls)
+
+roundaboutIsIdentity :: [Int] -> Bool
+roundaboutIsIdentity ls = ls == (unindexed $ (indexed ls))
+
+padPoly :: Ring a => Int -> Poly a -> Poly a
+padPoly n p
+  | n == deg = p
+  | n < deg  = p
+  | n > deg  = padPoly n (pushZero p)
+  where deg = degree p
+        pushZero (Poly list) = Poly (addId:list)
+
+instance Functor Poly where
+  fmap f (Poly list) = Poly (fmap f list)
+
+instance Ring a => Monoid (Poly a) where
+  add p1 p2 = let maxDegree = max (degree p1) (degree p2)
+                  p1' = padPoly maxDegree p1
+                  p2' = padPoly maxDegree p2
+                  l1  = getList p1'
+                  l2  = getList p2' in
+                Poly ((\(a, b) -> add a b) <$> zip l1 l2)          
+  addId = Poly []
+
+instance Ring a => Group (Poly a) where
+  inverse p = let l = getList p in
+                Poly ((\a -> inverse a) <$> l)
+
+instance Ring a => Ring (Poly a) where
+  mul p1 p2 = undefined
+  mulId = undefined
+                  
+
 main :: IO ()
 main = do
   isRing @Int
-
+  isGroup @(Poly Int)
+  quickCheck roundaboutIsIdentity
