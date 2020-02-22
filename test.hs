@@ -8,6 +8,7 @@
 
 import Prelude hiding (Monoid)
 import Test.QuickCheck
+import Data.List
 
 class Monoid a where
   add :: a -> a -> a
@@ -123,8 +124,8 @@ indexed a = indexed' (length a - 1) a
 
 -- assume fist list is sorted by Int
 unindexed :: Ring a => [(Int, a)] -> [a]
-unindexed []           = []
-unindexed ((ix, x):[]) = [x]
+unindexed []                   = []
+unindexed ((ix, x):[])         = x:(replicate ix addId)
 unindexed ((ix, x):(iy, y):xs) = x:(padWithId (ix - iy) (unindexed ((iy,y):xs)))
   where padWithId 0 ls = ls
         padWithId 1 ls = ls
@@ -132,6 +133,16 @@ unindexed ((ix, x):(iy, y):xs) = x:(padWithId (ix - iy) (unindexed ((iy,y):xs)))
 
 roundaboutIsIdentity :: [Int] -> Bool
 roundaboutIsIdentity ls = ls == (unindexed $ (indexed ls))
+
+compareTuple :: (Int, a) -> (Int, a) -> Ordering
+compareTuple (a,_) (b,_)
+  | a == b = EQ
+  | a < b = LT
+  | a > b = GT
+
+roundaboutIsIdentity2 :: [(Int, Int)] -> Bool
+roundaboutIsIdentity2 ls = l == (indexed $ (unindexed l))
+  where l = sortBy compareTuple ls
 
 padPoly :: Ring a => Int -> Poly a -> Poly a
 padPoly n p
