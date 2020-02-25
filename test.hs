@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -73,6 +74,14 @@ isRing = do
   quickCheck $ ringIsLeftDistributive @r
   quickCheck $ ringIsRightDistributive @r
 
+ringIsCommutative :: (Ring r, Eq r) => r -> r -> Bool
+ringIsCommutative a b = mul a b == mul b a
+
+isCommutativeRing :: forall r. (Ring r, Eq r, Arbitrary r, Show r) => IO ()
+isCommutativeRing = do
+  isRing @r
+  quickCheck $ ringIsCommutative @r
+
 instance Monoid Int where
   add = (+)
   addId = 0
@@ -84,9 +93,13 @@ instance Ring Int where
   mul = (*)
   mulId = 1
 
--- class Ring r => Poly p r | p -> r where
---   coeff :: p -> Int -> r
---   degree :: p -> Int
+class Ring r => Polynomial p r | p -> r where
+  coeff :: p -> Int -> r
+  deg :: p -> Int
+
+instance Polynomial [Int] Int where
+  coeff = undefined
+  deg = undefined
 
 data Poly a = Poly [a]
   deriving (Show)
@@ -175,6 +188,6 @@ instance Ring a => Ring (Poly a) where
 
 main :: IO ()
 main = do
-  isRing @Int
+  isCommutativeRing @Int
   isGroup @(Poly Int)
   quickCheck roundaboutIsIdentity
