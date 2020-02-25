@@ -10,6 +10,7 @@
 import Prelude hiding (Monoid)
 import Test.QuickCheck
 import Data.List
+import qualified Data.Map.Strict as Map
 
 class Monoid a where
   add :: a -> a -> a
@@ -93,101 +94,83 @@ instance Ring Int where
   mul = (*)
   mulId = 1
 
-class Ring r => Polynomial p r | p -> r where
-  coeff :: p -> Int -> r
-  deg :: p -> Int
-
-instance Polynomial [Int] Int where
-  coeff = undefined
-  deg = undefined
-
-data Poly a = Poly [a]
+data Poly a = Poly (Map.Map Int a)
   deriving (Show)
+
+degree :: Poly a -> Int
+degree (Poly m)
+  | Map.null m = 0
+  | otherwise  = maximum . Map.keys $ m
+
+coeff :: Ring a => Poly a -> Int -> a
+coeff (Poly m) k = Map.findWithDefault addId k m
+
+instance (Eq a, Ring a) => Eq (Poly a) where
+  p1 == p2 = all (\(a, b) -> a == b) [(a,b) |  let maxDegree = max (degree p1) (degree p2),
+                                                   i <- [0 .. maxDegree],
+                                                   let a = coeff p1 i,
+                                                   let b = coeff p2 i]
 
 instance Arbitrary a => Arbitrary (Poly a) where
   arbitrary = do
-    list <- arbitrary
-    return (Poly list)
-
-instance (Eq a, Monoid a) => Eq (Poly a) where
-  p1 == p2 = (dropWhile (==addId) (getList p1)) == (dropWhile (==addId) (getList p2))
-
-degree :: Poly a -> Int
-degree (Poly list) = (length list) - 1
-
-getList :: Poly a -> [a]
-getList (Poly ls) = ls
-
-stripZeros :: (Ring a, Eq a) => Poly a -> Poly a
-stripZeros p = Poly (dropWhile (==addId) (getList p))
-
-examplePoly1 :: Poly Int  = Poly [3, 2, -1, 7]
-examplePoly2 :: Poly Int  = Poly [2, 2, 1, 3, 1, -3]
--- 3x^2 + 3  -    [3, 0, 3]
--- 3x^2 -3x + 2 - [3, -3, 2]
--- [1, 2, 4, 5, 6]
--- [0, 0 ,2, 3, 5]
--- [(4, 1), (0, -1)]
--- [(2, 2), (1, -2), (0, 4)]
-
-indexed :: [a] -> [(Int, a)]
-indexed a = indexed' (length a - 1) a
-  where indexed' n (x:xs) = (n, x):(indexed' (n-1) xs)
-        indexed' n []     = []
-
--- assume fist list is sorted by Int
-unindexed :: Ring a => [(Int, a)] -> [a]
-unindexed []                   = []
-unindexed ((ix, x):[])         = x:(replicate ix addId)
-unindexed ((ix, x):(iy, y):xs) = x:(padWithId (ix - iy) (unindexed ((iy,y):xs)))
-  where padWithId 0 ls = ls
-        padWithId 1 ls = ls
-        padWithId n ls = padWithId (n-1) (addId:ls)
-
-roundaboutIsIdentity :: [Int] -> Bool
-roundaboutIsIdentity ls = ls == (unindexed $ (indexed ls))
-
-compareTuple :: (Int, a) -> (Int, a) -> Ordering
-compareTuple (a,_) (b,_)
-  | a == b = EQ
-  | a < b = LT
-  | a > b = GT
-
-roundaboutIsIdentity2 :: [(Int, Int)] -> Bool
-roundaboutIsIdentity2 ls = l == (indexed $ (unindexed l))
-  where l = sortBy compareTuple ls
-
-padPoly :: Ring a => Int -> Poly a -> Poly a
-padPoly n p
-  | n == deg = p
-  | n < deg  = p
-  | n > deg  = padPoly n (pushZero p)
-  where deg = degree p
-        pushZero (Poly list) = Poly (addId:list)
-
-instance Functor Poly where
-  fmap f (Poly list) = Poly (fmap f list)
+    list <- listOf (suchThat arbitrary (\(i, _) -> i >= 0))
+    let map    = Map.fromList list
+    return (Poly map)
 
 instance Ring a => Monoid (Poly a) where
-  add p1 p2 = let maxDegree = max (degree p1) (degree p2)
-                  p1' = padPoly maxDegree p1
-                  p2' = padPoly maxDegree p2
-                  l1  = getList p1'
-                  l2  = getList p2' in
-                Poly ((\(a, b) -> add a b) <$> zip l1 l2)          
-  addId = Poly []
+  add p1 p2 = Poly coeffs
+    where maxDegree = max (degree p1) (degree p2)
+          coeffs    = Map.fromList [(i, j) | i <- [0 .. maxDegree],
+                                    let j = add (coeff p1 i) (coeff p2 i)]
+    
+  addId = Poly Map.empty
 
 instance Ring a => Group (Poly a) where
-  inverse p = let l = getList p in
-                Poly ((\a -> inverse a) <$> l)
+  inverse (Poly m) = Poly (Map.map (\e -> inverse e) m)
+
+mulCoeff :: Ring a => Poly a -> Poly a -> Int -> a
+mulCoeff p1 p2 i = foldl (\acc -> \ele -> add acc ele) addId $ (\(a, b) -> mul a b) <$> getList p1 p2 i
+  where getList p1 p2 i = (\(a,b) -> (coeff p1 a, coeff p2 b)) <$> [(a, i - a) | a <- [0 .. i]]
 
 instance Ring a => Ring (Poly a) where
-  mul p1 p2 = undefined
-  mulId = undefined
-                  
+  mul p1 p2 = Poly coeffs
+    where maxDegree = (degree p1) + (degree p2)
+          coeffs    = Map.fromList [(i, j) | i <- [0 .. maxDegree],
+                                    let j = mulCoeff p1 p2 i]
+  mulId     = Poly (Map.fromList [(0, mulId)])
+
+examplePoly1 = Poly (Map.fromList [(2, 3), (1, -1), (0, 2)]) :: Poly Int
+examplePoly2 = Poly (Map.fromList [(2, 2), (1, 5), (0, -10)]) :: Poly Int
+
+expo :: Ring a => a -> Int -> a
+expo x 0 = mulId
+expo x n = mul x (expo x (n-1))
+
+eval :: Ring a => Poly a -> a -> a
+eval p x = foldl (\acc -> \ele -> add acc ele) addId $ [i | let deg = degree p,
+                                                            let ls = [0 .. deg],
+                                                            let ls' = (\pow -> mul (coeff p pow) (expo x pow)) <$> ls,
+                                                            i <- ls']
+
+
+-- (3x^2 - x + 2) * (2x^2 + 5x -10) =
+-- 6x^4   -2x^3 + 4x^2
+-- 15x^3  -5x^2 + 10x
+-- -30x^2 +10x  - 20
+
+-- (4,6), (3, 13), (2, -31), (1, 20), (0, -20)
+
+-- fix :: (a -> a) -> a
+-- fix f = x
+--   where
+--     x = f x
+
+-- fibeeee = fix (\fib -> 0:1:(zipWith (+) fib (tail fib)))
+
 
 main :: IO ()
 main = do
   isCommutativeRing @Int
-  isGroup @(Poly Int)
-  quickCheck roundaboutIsIdentity
+  isCommutativeRing @(Poly Int)
+
+

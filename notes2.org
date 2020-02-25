@@ -1,0 +1,26 @@
+
+
+
+* Notes
+* TODOS
+
+** DONE Rewrite tests to be generic
+
+** TODO Implement fields
+   
+** DONE Create tests isGroup, isRing etc (group properties)
+
+** TODO Write parser for polynomials
+
+** Install hlint with nix
+** Set up hlint in flycheck 
+** TODO Polynomial intersectons
+* Links
+** https://cheatsheet.codeslower.com/CheatSheet.pdf
+** http://learnyouahaskell.com/syntax-in-functions
+** https://en.wikipedia.org/wiki/Polynomial#Abstract_algebra
+** https://begriffs.com/posts/2017-01-14-design-use-quickcheck.html
+** https://en.wikipedia.org/wiki/Polynomial_ring
+** https://koko-m.github.io/GoI-Visualiser/
+** https://paste.debian.net/1131907/
+** https://medium.com/@imolfar/why-and-how-zk-snark-works-1-introduction-the-medium-of-a-proof-d946e931160
