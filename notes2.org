@@ -3,20 +3,19 @@
 
 * Notes
 * TODOS
-
 ** DONE Rewrite tests to be generic
 
 ** TODO Implement fields
-   
 ** DONE Create tests isGroup, isRing etc (group properties)
 
 ** TODO Write parser for polynomials
-
 ** Install hlint with nix
 ** Set up hlint in flycheck 
+** TODO PROVE THIS: exists x . s.t. (a * x) mod m = 1 =======> gcd a m = 1
 ** TODO Polynomial intersectons
 * Links
 ** https://cheatsheet.codeslower.com/CheatSheet.pdf
+** https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html
 ** http://learnyouahaskell.com/syntax-in-functions
 ** https://en.wikipedia.org/wiki/Polynomial#Abstract_algebra
 ** https://begriffs.com/posts/2017-01-14-design-use-quickcheck.html

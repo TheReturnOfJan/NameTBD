@@ -17,12 +17,16 @@ class Monoid a where
   addId :: a
 
 class Monoid a => Group a where
-  inverse :: a -> a
+  addInv :: a -> a
 
 -- Actually it has to be an ABELIAN group
 class Group a => Ring a where
   mul :: a -> a -> a
   mulId :: a
+
+-- Actually has to be commutative ring
+class Ring a => Field a where
+  mulInv :: a -> a
 
 -- To get a field you need this exstra
 -- commutative of mul
@@ -43,7 +47,7 @@ isMonoid = do
   quickCheck $ monoidHasIdentity @m
 
 groupHasInverse :: (Group g, Eq g) => g -> Bool
-groupHasInverse a = add a (inverse a) == addId && add (inverse a) a == addId
+groupHasInverse a = add a (addInv a) == addId && add (addInv a) a == addId
 
 isGroup :: forall g. (Group g, Eq g, Arbitrary g, Show g) => IO ()
 isGroup = do
@@ -83,12 +87,22 @@ isCommutativeRing = do
   isRing @r
   quickCheck $ ringIsCommutative @r
 
+fieldHasInverse :: (Field f, Eq f) => f -> Bool
+fieldHasInverse a
+  | a == addId = True
+  | otherwise  = mul a (mulInv a) == mulId && mul (mulInv a) a == mulId
+
+isField :: forall f. (Field f, Eq f, Arbitrary f, Show f) => IO ()
+isField = do
+  isCommutativeRing @f
+  quickCheck $ fieldHasInverse @f
+
 instance Monoid Int where
   add = (+)
   addId = 0
 
 instance Group Int where
-  inverse a = -a
+  addInv a = -a
 
 instance Ring Int where
   mul = (*)
@@ -126,7 +140,7 @@ instance Ring a => Monoid (Poly a) where
   addId = Poly Map.empty
 
 instance Ring a => Group (Poly a) where
-  inverse (Poly m) = Poly (Map.map (\e -> inverse e) m)
+  addInv (Poly m) = Poly (Map.map (\e -> addInv e) m)
 
 mulCoeff :: Ring a => Poly a -> Poly a -> Int -> a
 mulCoeff p1 p2 i = foldl (\acc -> \ele -> add acc ele) addId $ (\(a, b) -> mul a b) <$> getList p1 p2 i
@@ -139,9 +153,6 @@ instance Ring a => Ring (Poly a) where
                                     let j = mulCoeff p1 p2 i]
   mulId     = Poly (Map.fromList [(0, mulId)])
 
-examplePoly1 = Poly (Map.fromList [(2, 3), (1, -1), (0, 2)]) :: Poly Int
-examplePoly2 = Poly (Map.fromList [(2, 2), (1, 5), (0, -10)]) :: Poly Int
-
 expo :: Ring a => a -> Int -> a
 expo x 0 = mulId
 expo x n = mul x (expo x (n-1))
@@ -152,6 +163,67 @@ eval p x = foldl (\acc -> \ele -> add acc ele) addId $ [i | let deg = degree p,
                                                             let ls' = (\pow -> mul (coeff p pow) (expo x pow)) <$> ls,
                                                             i <- ls']
 
+
+sub :: Group a => a -> a -> a
+sub p1 p2 = add p1 (addInv p2)
+
+examplePoly1 = Poly (Map.fromList [(2, 3), (1, -1), (0, 2)]) :: Poly Int
+examplePoly2 = Poly (Map.fromList [(2, 2), (1, 5), (0, -10)]) :: Poly Int
+
+newtype ModInt = ModInt Integer
+  deriving (Show, Eq)
+
+instance Arbitrary ModInt where
+  arbitrary = do
+    i <- arbitrary
+    return (modInt i)
+
+ourPrime = 1046527
+
+modInt :: Integer -> ModInt
+modInt i = ModInt (i `mod` ourPrime)
+
+instance Monoid ModInt where
+  add (ModInt n1) (ModInt n2) = ModInt ((n1 + n2) `mod` ourPrime)
+  addId = ModInt 0
+
+instance Group ModInt where
+  addInv (ModInt i) = ModInt (-i)
+
+instance Ring ModInt where
+  mul (ModInt n1) (ModInt n2) = ModInt ((n1 * n2) `mod` ourPrime)
+  mulId = ModInt (1)
+
+
+extendedEuclid :: Integer -> Integer -> (Integer, Integer)
+extendedEuclid a b = extendedEuclid' a b 0 1 b 1 0 a
+  where
+    extendedEuclid' a b s t 0 olds oldt oldr = if oldr < 0 then (-olds, -oldt) else (olds, oldt)
+    extendedEuclid' a b s t r olds oldt oldr = extendedEuclid' a' b' s' t' r' olds' oldt' oldr'
+      where
+        a' = a
+        b' = b
+        q = oldr `div` r
+        oldr' = r
+        olds' = s
+        oldt' = t
+        r' = oldr - q * r
+        s' = olds - q * s
+        t' = oldt - q * t
+      
+instance Field ModInt where
+  mulInv (ModInt i) = ModInt (x)
+    where
+      x = fst $ extendedEuclid i ourPrime
+
+
+
+-- 3x^2 - x + 2
+-- 2x^2 + 5x -10
+
+-- 3x^2 - x + 2 = 2x^2 + 5x -10
+-- a3x^3 + a2x^2 ...
+-- (x + a) (x + b) (x + c) 
 
 -- (3x^2 - x + 2) * (2x^2 + 5x -10) =
 -- 6x^4   -2x^3 + 4x^2
@@ -172,5 +244,7 @@ main :: IO ()
 main = do
   isCommutativeRing @Int
   isCommutativeRing @(Poly Int)
+  isField           @ModInt
+  isCommutativeRing  @(Poly ModInt)
 
 
