@@ -11,8 +11,10 @@
 ** TODO Write parser for polynomials
 ** Install hlint with nix
 ** Set up hlint in flycheck 
+** TODO Polynomial division ?
 ** TODO PROVE THIS: exists x . s.t. (a * x) mod m = 1 =======> gcd a m = 1
 ** TODO Polynomial intersectons
+** TODO Why does extendedeuclid work?
 * Links
 ** https://cheatsheet.codeslower.com/CheatSheet.pdf
 ** https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html
@@ -23,3 +25,30 @@
 ** https://koko-m.github.io/GoI-Visualiser/
 ** https://paste.debian.net/1131907/
 ** https://medium.com/@imolfar/why-and-how-zk-snark-works-1-introduction-the-medium-of-a-proof-d946e931160
+
+
+* Temp 
+Prover, Verifier
+
+Verifier knows a polynomial p1.
+Prover want to convince the verifier, that he also knows a polynomial p1, without sending p1.
+
+Verifier sends a ring element r. Prover calls (eval p1 r), and gets r' and sends r' to the 
+verifier.
+
+Verifier knows (3x^2 + 2x - 2). And the prover want to show that he also knows it.
+
+Verifier send 2 to the prover. Prover evals his polynomial and gets 14 and sends it back.
+
+Odds of being fooled > 1/2.
+1 - this ... 99.9999%
+
+I know a multiple of 123 = t.
+Send u 79 = h. 
+9717 = p .............. 123 * 79 = 9717
+
+p(x) = x^3 - 3x^2 + 2x
+t(x) = x^2 - 3x + 2
+h(x) = x
+
+h(x) * t(x) = p(x)

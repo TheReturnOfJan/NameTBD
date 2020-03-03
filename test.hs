@@ -170,6 +170,31 @@ sub p1 p2 = add p1 (addInv p2)
 examplePoly1 = Poly (Map.fromList [(2, 3), (1, -1), (0, 2)]) :: Poly Int
 examplePoly2 = Poly (Map.fromList [(2, 2), (1, 5), (0, -10)]) :: Poly Int
 
+p = Poly (Map.fromList [(3, 1), (2, -3), (1,2)]) :: Poly Int
+t = Poly (Map.fromList [(2, 1), (1, -3), (0,2)]) :: Poly Int
+h = Poly (Map.fromList [(1,1)]) :: Poly Int
+
+evalDistributesOverMul :: (Eq r, Ring r) => r -> Poly r -> Poly r -> Bool
+evalDistributesOverMul r p1 p2 = mul (eval p1 r) (eval p2 r) == eval (mul p1 p2) r 
+
+
+
+-- Verifier side
+r = 23 :: Int
+rAtt = eval t r
+
+-- transmit r from verifier -> prover
+
+-- Prover side
+rAtp = eval p r
+rAth = eval h r
+
+-- transmit rAtp and rAth from prover -> verifier
+check = rAtt * rAth == rAtp
+
+
+
+
 newtype ModInt = ModInt Integer
   deriving (Show, Eq)
 
@@ -217,6 +242,24 @@ instance Field ModInt where
       x = fst $ extendedEuclid i ourPrime
 
 
+ourG = 5
+newtype EncModInt = EncModInt ModInt
+  deriving (Show, Eq)
+
+encModInt :: Integer -> EncModInt
+encModInt i = EncModInt $ modInt $ ourG^i
+
+instance Arbitrary EncModInt where
+  arbitrary = do
+    i <- suchThat arbitrary (>0)
+    return (encModInt i)
+
+instance Monoid EncModInt where
+  add (EncModInt n1) (EncModInt n2) = EncModInt (mul n1 n2)
+  addId = EncModInt $ mulId
+
+-- instance Group EncModInt where
+--   addInv (EncModInt n) = 
 
 -- 3x^2 - x + 2
 -- 2x^2 + 5x -10
@@ -245,6 +288,6 @@ main = do
   isCommutativeRing @Int
   isCommutativeRing @(Poly Int)
   isField           @ModInt
-  isCommutativeRing  @(Poly ModInt)
+  isCommutativeRing @(Poly ModInt)
 
 
