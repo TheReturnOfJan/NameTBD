@@ -1,0 +1,7 @@
+digraph Alg {
+    Group -> Monoid;
+    Semiring -> Monoid;
+    Ring -> Group;
+    Ring -> Semiring;
+    Field -> Ring;
+}

@@ -2,6 +2,10 @@
 
 
 * Notes
+
+Raising to a negative power is interesting in modular arithmetic. It does not
+commute with respect to mulInv and exp???
+
 * TODOS
 ** DONE Rewrite tests to be generic
 
@@ -15,6 +19,7 @@
 ** TODO PROVE THIS: exists x . s.t. (a * x) mod m = 1 =======> gcd a m = 1
 ** TODO Polynomial intersectons
 ** TODO Why does extendedeuclid work?
+** TODO http://ace.cs.ohio.edu/~gstewart/papers/snaarkl.pdf 
 * Links
 ** https://cheatsheet.codeslower.com/CheatSheet.pdf
 ** https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html
@@ -25,7 +30,6 @@
 ** https://koko-m.github.io/GoI-Visualiser/
 ** https://paste.debian.net/1131907/
 ** https://medium.com/@imolfar/why-and-how-zk-snark-works-1-introduction-the-medium-of-a-proof-d946e931160
-
 
 * Temp 
 Prover, Verifier
