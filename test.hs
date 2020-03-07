@@ -242,7 +242,7 @@ encModInt i = EncModInt $ raise (modInt ourG) i
 
 instance Arbitrary EncModInt where
   arbitrary = do
-    i <- suchThat arbitrary (>0)
+    i <- arbitrary
     return (encModInt i)
 
 instance Monoid EncModInt where
